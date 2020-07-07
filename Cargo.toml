@@ -11,3 +11,4 @@ exclude = ["/tests/*", "/.idea/*", "/benches/*"]
 
 [dependencies]
 num = "0.3"
+factorial = "0.2"

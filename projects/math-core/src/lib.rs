@@ -1,21 +1,27 @@
-use std::any::Any;
 use std::fmt::{Debug, Formatter};
+use downcast_trait::{downcast_trait, downcast_trait_impl_convert_to, DowncastTrait};
+use core::{any::{Any, TypeId}, mem};
+use std::collections::BTreeMap;
+use std::hash::Hash;
+use num::BigInt;
 
-pub trait Symbol: DowncastTrait {
+pub trait Symbolic: Debug {
+    fn name(&self) -> &'static str;
     fn eval(&self, span: Span, args: &[ASTNode]) -> ASTNode;
-    fn as_any(&self) -> &dyn Any;
-}
-
-impl Debug for Box<dyn Symbol> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Function")
+    fn as_any(&self) -> &dyn Any where Self: Sized + 'static {
+        self
     }
 }
 
+
+
 #[derive(Debug)]
 pub enum ASTKind {
+    Atom {
+        atom: Box<dyn Symbolic>,
+    },
     Function {
-        head: Box<dyn Symbol>,
+        head: Box<dyn Symbolic>,
         rest: Vec<ASTNode>,
     },
 }
@@ -41,12 +47,39 @@ pub struct ASTNode {
     span: Span,
 }
 
-pub trait FactorIntegerFast {
-    fn factor_integer_fast(&self, span: Span, args: &[ASTNode]) -> ASTNode;
+impl Debug for FactorInteger {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "FactorInteger({})", self.fast.len())
+    }
 }
 
-#[derive(Debug)]
-pub struct FactorInteger {}
+pub struct FactorInteger {
+    fast: BTreeMap<&'static str, Box<dyn Fn(Span, &[ASTNode]) -> ASTNode>>,
+}
+
+impl FactorInteger {
+    pub fn new_fast(&mut self, name: &'static str, func: impl Fn(Span, &[ASTNode]) -> ASTNode + 'static) {
+        self.fast.insert(name, Box::new(func));
+    }
+    pub fn try_fast(&self, name: &str, span: Span, args: &[ASTNode]) -> Option<ASTNode> {
+        self.fast.get(name).map(|f| f(span, args))
+    }
+    pub fn builtin() -> Self {
+        let mut base = FactorInteger {
+            fast: BTreeMap::new(),
+        };
+        base.new_fast("Factorial", |span, args| {
+            ASTNode {
+                kind: ASTKind::Atom {
+                    atom: Box::new(BigInt::from(2)),
+                },
+                span: Default::default()
+            }
+        });
+        base
+
+    }
+}
 
 #[derive(Debug)]
 pub struct Factorial {}
@@ -63,19 +96,35 @@ impl ASTKind {
             Self::Function { head, rest } => {
                 head.eval(span, rest)
             }
+            Self::Atom { atom } => {
+                atom.eval(span, &[])
+            }
         }
     }
 }
 
-impl FactorIntegerFast for Factorial {
-    fn factor_integer_fast(&self, span: Span, args: &[ASTNode]) -> ASTNode {
-        todo!("should stop here")
+impl Symbolic for BigInt {
+    fn name(&self) -> &'static str {
+        "Integer"
+    }
+
+    fn eval(&self, span: Span, args: &[ASTNode]) -> ASTNode {
+        ASTNode {
+            kind: ASTKind::Atom {
+                atom: Box::new(self.clone()),
+            },
+            span,
+        }
     }
 }
 
-impl Symbol for Factorial {
+impl Symbolic for Factorial {
+    fn name(&self) -> &'static str {
+        "Factorial"
+    }
+
     fn eval(&self, span: Span, args: &[ASTNode]) -> ASTNode {
-        todo!("dont stop here")
+        args[0].eval()
     }
 
     fn as_any(&self) -> &dyn Any {
@@ -84,18 +133,22 @@ impl Symbol for Factorial {
 }
 
 
-impl Symbol for FactorInteger {
+impl Symbolic for FactorInteger {
+    fn name(&self) -> &'static str {
+        "FactorInteger"
+    }
+
     fn eval(&self, span: Span, args: &[ASTNode]) -> ASTNode {
         match &args[0].kind {
             ASTKind::Function { head, rest } => {
-                println!("{:?}", head.as_any().is::<&dyn FactorIntegerFast>());
-                println!("{:?}", head.as_any().is::<Box<dyn FactorIntegerFast>>());
-                println!("{:?}", head.as_any().is::<&Box<dyn FactorIntegerFast>>());
-
-                match head.as_any().downcast_ref::<&dyn FactorIntegerFast>() {
-                    Some(o) => { o.factor_integer_fast(span, rest) }
-                    _ => { head.eval(span, rest) }
-                }
+                self.try_fast(head.name(), span, rest).unwrap_or_else(|| {
+                    head.eval(span, rest)
+                })
+            }
+            ASTKind::Atom { atom } => {
+                self.try_fast(atom.name(), span, &[]).unwrap_or_else(|| {
+                    atom.eval(span, &[])
+                })
             }
         }
     }
@@ -107,12 +160,20 @@ impl Symbol for FactorInteger {
 
 #[test]
 fn test() {
+    let bigint = BigInt::from(1);
+    let bigint = ASTNode {
+        kind: ASTKind::Atom {
+            atom: Box::new(bigint)
+        },
+        span: Span::default(),
+    };
+
     let factorial = Factorial {};
-    let factor_integer = FactorInteger {};
+    let factor_integer = FactorInteger::builtin();
     let factorial_node = ASTNode {
         kind: ASTKind::Function {
             head: Box::new(factorial),
-            rest: vec![],
+            rest: vec![bigint],
         },
         span: Span::default(),
     };
@@ -126,33 +187,3 @@ fn test() {
     println!("{:?}", factor_integer_node.eval())
 }
 
-
-#[macro_use] extern crate downcast_trait;
-use downcast_trait::DowncastTrait;
-use core::{any::{Any, TypeId}, mem};
-trait Widget: DowncastTrait {}
-trait Container: Widget {
-    fn enumerate_widget_leaves_recursive(&self) -> Vec<&Box<dyn Widget>>;
-}
-struct Window {
-    sub_widgets: Vec<Box<dyn Widget>>,
-}
-impl Widget for Window {}
-impl Container for Window {
-    fn enumerate_widget_leaves_recursive(&self) -> Vec<&Box<dyn Widget>> {
-        let mut result = Vec::<&Box<dyn Widget>>::new();
-        self.sub_widgets.iter().for_each(|sub_widget| {
-            if let Some(sub_container) =
-            downcast_trait!(dyn Container, sub_widget.as_ref().to_downcast_trait())
-            {
-                result.extend(sub_container.enumerate_widget_leaves_recursive());
-            } else {
-                result.push(sub_widget);
-            }
-        });
-        result
-    }
-}
-impl DowncastTrait for Window {
-    downcast_trait_impl_convert_to!(dyn Container);
-}

@@ -1,9 +1,4 @@
-# Math AST
+Rust Template Project
+=====================
 
-## Basic
-
-```rust
-```
-
-
-## Todo list
+Rust template project for monorepo

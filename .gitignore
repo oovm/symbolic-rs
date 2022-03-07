@@ -1,24 +1,12 @@
+# OS
+.DS_Store/**/*
+
 # IDE
-.idea/
-.vscode/
-.vs/
+.vscode/**/*
+.vs/**/*
+.idea/**/*
 *.iml
 
-# Yarn
-yarn.lock
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
 # Rust
+target/**/*
 Cargo.lock
-target/
-
-# Build
-Thumbs.db
-.DS_Store
-docs/.build/
-
-
-*.7z

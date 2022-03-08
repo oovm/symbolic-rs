@@ -11,7 +11,7 @@ impl Symbolic for Primitive {
         }
     }
 
-    fn apply(&self, span: Span, args: &[ASTNode]) -> Result<ASTNode> {
+    fn forward(&self, span: Span, args: &[ASTNode]) -> Result<ASTNode> {
         debug_assert!(args.is_empty());
         Ok(ASTNode::primitive(self.clone(), span))
     }

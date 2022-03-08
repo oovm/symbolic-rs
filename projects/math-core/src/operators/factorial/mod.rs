@@ -14,7 +14,7 @@ impl Symbolic for Factorial {
         "Factorial"
     }
 
-    fn apply(&self, span: Span, args: &[ASTNode]) -> Result<ASTNode> {
+    fn forward(&self, span: Span, args: &[ASTNode]) -> Result<ASTNode> {
         let first = match args {
             [first] => first,
             _ => panic!("{:?}: Factorial takes at exactly one argument", span),

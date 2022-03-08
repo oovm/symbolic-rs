@@ -1,4 +1,5 @@
-use core::any::Any;
+#![feature(once_cell)]
+
 use std::{collections::VecDeque, fmt::Debug};
 
 pub use errors::{Result, SMError};
@@ -12,13 +13,7 @@ mod traits;
 
 pub trait Symbolic: Debug {
     fn name(&self) -> &'static str;
-    fn apply(&self, span: Span, args: &[ASTNode]) -> Result<ASTNode>;
-    fn as_any(&self) -> &dyn Any
-    where
-        Self: Sized + 'static,
-    {
-        self
-    }
+    fn forward(&self, span: Span, args: &[ASTNode]) -> Result<ASTNode>;
 }
 
 #[derive(Debug)]
@@ -47,19 +42,19 @@ pub struct ASTNode {
 }
 
 impl ASTNode {
-    pub fn apply(&self) -> Result<ASTNode> {
-        self.kind.eval(self.span)
+    pub fn forward(&self) -> Result<ASTNode> {
+        self.kind.forward(self.span)
     }
 }
 
 impl ASTKind {
-    pub fn eval(&self, span: Span) -> Result<ASTNode> {
+    pub fn forward(&self, span: Span) -> Result<ASTNode> {
         let out = match self {
-            Self::Atomic { atom } => atom.apply(span, &[])?,
+            Self::Atomic { atom } => atom.forward(span, &[])?,
             Self::List { items } => {
                 todo!()
             }
-            Self::Function { head, rest } => head.apply(span, rest)?,
+            Self::Function { head, rest } => head.forward(span, rest)?,
         };
         Ok(out)
     }
@@ -70,12 +65,12 @@ fn test() {
     let bigint = ASTNode { kind: ASTKind::Atomic { atom: Primitive::from(1) }, span: Span::default() };
 
     let factorial = Factorial {};
-    let factor_integer = FactorInteger::builtin();
+    let factor_integer = FactorInteger {};
     let factorial_node =
         ASTNode { kind: ASTKind::Function { head: Box::new(factorial), rest: vec![bigint] }, span: Span::default() };
     let factor_integer_node = ASTNode {
         kind: ASTKind::Function { head: Box::new(factor_integer), rest: vec![factorial_node] },
         span: Span::default(),
     };
-    println!("{:?}", factor_integer_node.apply())
+    println!("{:?}", factor_integer_node.forward())
 }

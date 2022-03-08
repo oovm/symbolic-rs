@@ -1,7 +1,7 @@
-use std::fmt::{Debug, Formatter};
+use std::fmt::Debug;
 
 use bigdecimal_rs::BigDecimal;
-use num::{BigInt, BigRational, BigUint};
+use num::{BigInt, BigUint};
 
 use crate::{ASTKind, ASTNode, Span, Symbolic};
 
@@ -15,21 +15,4 @@ pub enum Primitive {
     String(String),
     Integer(BigInt),
     Decimal(BigDecimal),
-}
-
-impl Symbolic for Primitive {
-    fn name(&self) -> &'static str {
-        match self {
-            Primitive::Boolean(_) => "Boolean",
-            Primitive::String(_) => "String",
-            Primitive::Integer(_) => "Integer",
-            Primitive::Decimal(_) => "Decimal",
-            Primitive::Character(_) => "Character",
-        }
-    }
-
-    fn apply(&self, span: Span, args: &[ASTNode]) -> ASTNode {
-        debug_assert!(args.is_empty());
-        ASTNode { kind: ASTKind::Atomic { atom: self.clone() }, span }
-    }
 }

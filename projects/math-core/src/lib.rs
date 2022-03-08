@@ -1,16 +1,13 @@
-use core::{
-    any::{Any, TypeId},
-    mem,
-};
+use core::any::Any;
 use std::{
     collections::BTreeMap,
     fmt::{Debug, Formatter},
-    hash::Hash,
 };
-pub(crate) mod primitive;
+
 use crate::primitive::Primitive;
-use downcast_trait::{downcast_trait, downcast_trait_impl_convert_to, DowncastTrait};
-use num::{BigInt, BigRational};
+
+pub(crate) mod factorial;
+pub(crate) mod primitive;
 
 pub trait Symbolic: Debug {
     fn name(&self) -> &'static str;
@@ -66,19 +63,13 @@ impl FactorInteger {
     }
     pub fn builtin() -> Self {
         let mut base = FactorInteger { fast: BTreeMap::new() };
-        base.new_fast("Factorial", |span, args| ASTNode {
-            kind: ASTKind::Atomic { atom: Box::new(BigInt::from(2)) },
-            span: Default::default(),
-        });
+        base.new_fast("Factorial", |span, args| ASTNode { kind: ASTKind::Atomic { atom: Primitive::from(2) }, span });
         base
     }
 }
 
-#[derive(Debug)]
-pub struct Factorial {}
-
 impl ASTNode {
-    pub fn eval(&self) -> ASTNode {
+    pub fn apply(&self) -> ASTNode {
         self.kind.eval(self.span)
     }
 }
@@ -87,32 +78,8 @@ impl ASTKind {
     pub fn eval(&self, span: Span) -> ASTNode {
         match self {
             Self::Function { head, rest } => head.apply(span, rest),
-            Self::Atomic { atom } => atom.eval(span, &[]),
+            Self::Atomic { atom } => atom.apply(span, &[]),
         }
-    }
-}
-
-impl Symbolic for BigInt {
-    fn name(&self) -> &'static str {
-        "Integer"
-    }
-
-    fn apply(&self, span: Span, args: &[ASTNode]) -> ASTNode {
-        ASTNode { kind: ASTKind::Atomic { atom: Box::new(self.clone()) }, span }
-    }
-}
-
-impl Symbolic for Factorial {
-    fn name(&self) -> &'static str {
-        "Factorial"
-    }
-
-    fn apply(&self, span: Span, args: &[ASTNode]) -> ASTNode {
-        args[0].eval()
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
     }
 }
 
@@ -126,7 +93,7 @@ impl Symbolic for FactorInteger {
             ASTKind::Function { head, rest } => {
                 self.try_fast(head.name(), span, rest).unwrap_or_else(|| head.apply(span, rest))
             }
-            ASTKind::Atomic { atom } => self.try_fast(atom.name(), span, &[]).unwrap_or_else(|| atom.eval(span, &[])),
+            ASTKind::Atomic { atom } => self.try_fast(atom.name(), span, &[]).unwrap_or_else(|| atom.apply(span, &[])),
         }
     }
 
@@ -137,8 +104,7 @@ impl Symbolic for FactorInteger {
 
 #[test]
 fn test() {
-    let bigint = BigInt::from(1);
-    let bigint = ASTNode { kind: ASTKind::Atomic { atom: Box::new(bigint) }, span: Span::default() };
+    let bigint = ASTNode { kind: ASTKind::Atomic { atom: Primitive::from(1) }, span: Span::default() };
 
     let factorial = Factorial {};
     let factor_integer = FactorInteger::builtin();
@@ -148,5 +114,5 @@ fn test() {
         kind: ASTKind::Function { head: Box::new(factor_integer), rest: vec![factorial_node] },
         span: Span::default(),
     };
-    println!("{:?}", factor_integer_node.eval())
+    println!("{:?}", factor_integer_node.apply())
 }

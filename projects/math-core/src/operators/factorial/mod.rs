@@ -1,7 +1,7 @@
 use bigdecimal_rs::ToPrimitive;
 use num::{BigUint, One};
 
-use crate::{ASTKind, ASTNode, Primitive, Span, Symbolic};
+use crate::{ASTKind, ASTNode, Primitive, Result, Span, Symbolic};
 
 mod convert;
 mod traits;
@@ -14,29 +14,31 @@ impl Symbolic for Factorial {
         "Factorial"
     }
 
-    fn apply(&self, span: Span, args: &[ASTNode]) -> ASTNode {
+    fn apply(&self, span: Span, args: &[ASTNode]) -> Result<ASTNode> {
         let first = match args {
             [first] => first,
             _ => panic!("{:?}: Factorial takes at exactly one argument", span),
         };
-        match &first.kind {
-            ASTKind::Atomic { atom } => {
+        let out = match &first.kind {
+            ASTKind::Atomic { atom } => atom.factorial(span)?,
+            ASTKind::List { items } => {
                 todo!()
             }
             ASTKind::Function { head, rest } => {
                 todo!()
             }
-        }
+        };
+        Ok(out)
     }
 }
 
 pub trait FactorialFast {
-    fn factorial(&self, span: Span) -> ASTNode;
+    fn factorial(&self, span: Span) -> Result<ASTNode>;
 }
 
 impl FactorialFast for Primitive {
-    fn factorial(&self, span: Span) -> ASTNode {
-        match self {
+    fn factorial(&self, span: Span) -> Result<ASTNode> {
+        let out = match self {
             Primitive::Boolean(_) => {
                 todo!()
             }
@@ -47,6 +49,7 @@ impl FactorialFast for Primitive {
                 todo!()
             }
             Primitive::Integer(i) => {
+                // TODO: https://www.zhihu.com/question/489536779/answer/2342104485
                 let n = i.to_usize().unwrap();
                 let out = (1..=n).fold(BigUint::one(), |a, b| a * b);
                 ASTNode::primitive(out, span)
@@ -54,6 +57,7 @@ impl FactorialFast for Primitive {
             Primitive::Decimal(_) => {
                 todo!()
             }
-        }
+        };
+        Ok(out)
     }
 }

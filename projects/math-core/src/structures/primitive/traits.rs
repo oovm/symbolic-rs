@@ -11,8 +11,8 @@ impl Symbolic for Primitive {
         }
     }
 
-    fn apply(&self, span: Span, args: &[ASTNode]) -> ASTNode {
+    fn apply(&self, span: Span, args: &[ASTNode]) -> Result<ASTNode> {
         debug_assert!(args.is_empty());
-        ASTNode { kind: ASTKind::Atomic { atom: self.clone() }, span }
+        Ok(ASTNode::primitive(self.clone(), span))
     }
 }

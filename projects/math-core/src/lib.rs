@@ -1,20 +1,18 @@
 use core::any::Any;
-use std::{
-    collections::BTreeMap,
-    fmt::{Debug, Formatter},
-};
+use std::{collections::VecDeque, fmt::Debug};
 
 pub use errors::{Result, SMError};
 
-use crate::{factorial::Factorial, primitive::Primitive};
+use self::{operators::*, structures::*};
 
 mod errors;
-pub(crate) mod factorial;
-pub(crate) mod primitive;
+mod operators;
+mod structures;
+mod traits;
 
 pub trait Symbolic: Debug {
     fn name(&self) -> &'static str;
-    fn apply(&self, span: Span, args: &[ASTNode]) -> ASTNode;
+    fn apply(&self, span: Span, args: &[ASTNode]) -> Result<ASTNode>;
     fn as_any(&self) -> &dyn Any
     where
         Self: Sized + 'static,
@@ -26,6 +24,7 @@ pub trait Symbolic: Debug {
 #[derive(Debug)]
 pub enum ASTKind {
     Atomic { atom: Primitive },
+    List { items: VecDeque<ASTNode> },
     Function { head: Box<dyn Symbolic>, rest: Vec<ASTNode> },
 }
 
@@ -47,61 +46,22 @@ pub struct ASTNode {
     span: Span,
 }
 
-impl Debug for FactorInteger {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "FactorInteger({})", self.fast.len())
-    }
-}
-
-pub struct FactorInteger {
-    fast: BTreeMap<&'static str, Box<dyn Fn(Span, &[ASTNode]) -> ASTNode>>,
-}
-
-impl FactorInteger {
-    pub fn new_fast(&mut self, name: &'static str, func: impl Fn(Span, &[ASTNode]) -> ASTNode + 'static) {
-        self.fast.insert(name, Box::new(func));
-    }
-    pub fn try_fast(&self, name: &str, span: Span, args: &[ASTNode]) -> Option<ASTNode> {
-        self.fast.get(name).map(|f| f(span, args))
-    }
-    pub fn builtin() -> Self {
-        let mut base = FactorInteger { fast: BTreeMap::new() };
-        base.new_fast("Factorial", |span, args| ASTNode { kind: ASTKind::Atomic { atom: Primitive::from(2) }, span });
-        base
-    }
-}
-
 impl ASTNode {
-    pub fn apply(&self) -> ASTNode {
+    pub fn apply(&self) -> Result<ASTNode> {
         self.kind.eval(self.span)
     }
 }
 
 impl ASTKind {
-    pub fn eval(&self, span: Span) -> ASTNode {
-        match self {
-            Self::Function { head, rest } => head.apply(span, rest),
-            Self::Atomic { atom } => atom.apply(span, &[]),
-        }
-    }
-}
-
-impl Symbolic for FactorInteger {
-    fn name(&self) -> &'static str {
-        "FactorInteger"
-    }
-
-    fn apply(&self, span: Span, args: &[ASTNode]) -> ASTNode {
-        match &args[0].kind {
-            ASTKind::Function { head, rest } => {
-                self.try_fast(head.name(), span, rest).unwrap_or_else(|| head.apply(span, rest))
+    pub fn eval(&self, span: Span) -> Result<ASTNode> {
+        let out = match self {
+            Self::Atomic { atom } => atom.apply(span, &[])?,
+            Self::List { items } => {
+                todo!()
             }
-            ASTKind::Atomic { atom } => self.try_fast(atom.name(), span, &[]).unwrap_or_else(|| atom.apply(span, &[])),
-        }
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
+            Self::Function { head, rest } => head.apply(span, rest)?,
+        };
+        Ok(out)
     }
 }
 

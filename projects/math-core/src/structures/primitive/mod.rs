@@ -3,8 +3,7 @@ use std::fmt::Debug;
 use bigdecimal_rs::BigDecimal;
 use num::{BigInt, BigUint};
 
-use crate::{ASTKind, ASTNode, Span, Symbolic};
-
+use crate::{ASTKind, ASTNode, Result, Span, Symbolic};
 mod convert;
 mod traits;
 

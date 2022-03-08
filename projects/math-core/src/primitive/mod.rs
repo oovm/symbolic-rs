@@ -16,3 +16,12 @@ pub enum Primitive {
     Integer(BigInt),
     Decimal(BigDecimal),
 }
+
+impl ASTNode {
+    pub fn primitive<T>(atom: T, span: Span) -> Self
+    where
+        T: Into<Primitive>,
+    {
+        ASTNode { kind: ASTKind::Atomic { atom: atom.into() }, span }
+    }
+}

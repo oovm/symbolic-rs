@@ -1,4 +1,8 @@
-use crate::{ASTKind, ASTNode, Span, Symbolic};
+use bigdecimal_rs::ToPrimitive;
+use num::{BigUint, One};
+
+use crate::{ASTKind, ASTNode, Primitive, Span, Symbolic};
+
 mod convert;
 mod traits;
 
@@ -20,6 +24,34 @@ impl Symbolic for Factorial {
                 todo!()
             }
             ASTKind::Function { head, rest } => {
+                todo!()
+            }
+        }
+    }
+}
+
+pub trait FactorialFast {
+    fn factorial(&self, span: Span) -> ASTNode;
+}
+
+impl FactorialFast for Primitive {
+    fn factorial(&self, span: Span) -> ASTNode {
+        match self {
+            Primitive::Boolean(_) => {
+                todo!()
+            }
+            Primitive::Character(_) => {
+                todo!()
+            }
+            Primitive::String(_) => {
+                todo!()
+            }
+            Primitive::Integer(i) => {
+                let n = i.to_usize().unwrap();
+                let out = (1..=n).fold(BigUint::one(), |a, b| a * b);
+                ASTNode::primitive(out, span)
+            }
+            Primitive::Decimal(_) => {
                 todo!()
             }
         }

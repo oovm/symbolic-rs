@@ -4,8 +4,11 @@ use std::{
     fmt::{Debug, Formatter},
 };
 
-use crate::primitive::Primitive;
+pub use errors::{Result, SMError};
 
+use crate::{factorial::Factorial, primitive::Primitive};
+
+mod errors;
 pub(crate) mod factorial;
 pub(crate) mod primitive;
 

@@ -13,6 +13,7 @@ edition = "2021"
 math-ast = "0.2.0"
 downcast-trait = "0.1.0"
 num = "0.4.0"
+bigdecimal-rs = "0.2.1"
 
 [dev-dependencies]
 
